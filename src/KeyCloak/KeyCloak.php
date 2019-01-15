@@ -369,6 +369,11 @@ class KeyCloak {
 	 */
 	public function get_token_introspection ($token) {
 
+		if ($this->isJson($token)) {
+			$token = json_decode($token, true);
+			$token = $token['access_token'];
+		}
+
 		if (gettype($this->config) === 'string') {
 			$config_data = json_decode($this->config, true);
 		}
@@ -551,5 +556,18 @@ class KeyCloak {
      */
     public static function url_base64_encode ($input) {
         return str_replace('=', '', strtr(base64_encode($input), '+/', '-_'));
-    }
+		}
+		
+		/**
+     * Check is Json.
+     *
+     * @param string $input The string you want encoded
+     *
+     * @return {Boolean} TRUE for success or FALSE for failure
+     */
+
+		public static function isJson($string) {
+			json_decode($string);
+			return (json_last_error() == JSON_ERROR_NONE);
+		}
 }

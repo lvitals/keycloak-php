@@ -35,16 +35,14 @@ class Grant
             $grant_data = json_decode($this->_raw, true);
     	} else {
     		$this->_raw = json_encode($grant_data);
-		}
+			}
 
-    	$this->client_id = array_key_exists('client_id', $grant_data) ? $grant_data['client_id'] : '';
-
-    	$this->access_token = array_key_exists('access_token', $grant_data) ? new Token($grant_data['access_token'], $this->client_id) : null;
-		$this->refresh_token = array_key_exists('refresh_token', $grant_data) ? new Token($grant_data['refresh_token'], $this->client_id) : null;
-		$this->id_token = array_key_exists('id_token', $grant_data) ? new Token($grant_data['id_token'], $this->client_id) : null;
-
-		$this->token_type = array_key_exists('token_type', $grant_data) ? $grant_data['token_type'] : 'bearer';
-		$this->expires_in = array_key_exists('expires_in', $grant_data) ? $grant_data['expires_in'] : 300;
+			$this->client_id = array_key_exists('client_id', $grant_data) ? $grant_data['client_id'] : '';
+			$this->access_token = array_key_exists('access_token', $grant_data) ? new Token($grant_data['access_token'], $this->client_id) : null;
+			$this->refresh_token = array_key_exists('refresh_token', $grant_data) ? new Token($grant_data['refresh_token'], $this->client_id) : null;
+			$this->id_token = array_key_exists('id_token', $grant_data) ? new Token($grant_data['id_token'], $this->client_id) : null;
+			$this->token_type = array_key_exists('token_type', $grant_data) ? $grant_data['token_type'] : 'bearer';
+			$this->expires_in = array_key_exists('expires_in', $grant_data) ? $grant_data['expires_in'] : 300;
     }
 
     /**
