@@ -6,7 +6,7 @@ class KeyCloak {
 
 	public $grant;
 
-	protected $realm_id;
+	public $realm_id;
 	protected $client_id;
 	protected $secret;
 	protected $auth_server_url;
@@ -501,6 +501,16 @@ class KeyCloak {
 		);
 	
 		return $this->send_request('GET', $this->base_url_admin("/users/{$id}/role-mappings"), $headers);
+	}
+
+	public function get_roles_client_by_name($id, $role_name, $access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json"
+		);
+	
+		return $this->send_request('GET', $this->base_url_admin("/clients/{$id}/roles/{$role_name}"), $headers);
 	}
 
 	public function get_all_roles_client($id, $access_token) {
