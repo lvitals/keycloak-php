@@ -9,6 +9,7 @@ class KeyCloak {
 	protected $realm_id;
 	protected $client_id;
 	protected $secret;
+	protected $auth_server_url;
 
 	protected $realm_url;
 	protected $realm_admin_url;
@@ -63,19 +64,19 @@ class KeyCloak {
 		 * Authentication server URL
 		 * @type {String}
 		 */
-		$auth_server_url = $this->config['auth-server-url'] ? $this->config['auth-server-url'] : 'http://localhost';
+		$this->auth_server_url = $this->config['auth-server-url'] ? $this->config['auth-server-url'] : FALSE;
 
 		/**
 		 * Root realm URL.
 		 * @type {String}
 		 */
-		$this->realm_url = $auth_server_url . '/realms/' . $this->realm_id;
+		$this->realm_url = $this->auth_server_url . '/realms/' . $this->realm_id;
 
 		/**
 		 * Root realm admin URL.
 		 * @type {String}
 		 */
-		$this->realm_admin_url = $auth_server_url . '/admin/realms/' . $this->realm_id;
+		$this->realm_admin_url = $this->auth_server_url . '/admin/realms/' . $this->realm_id;
 
 		/**
 		 * Formatted public-key.
@@ -83,6 +84,14 @@ class KeyCloak {
 		 */
 		// $key_parts = str_split($config_data['realm-public-key'], 64);
 		// $this->public_key = "-----BEGIN PUBLIC KEY-----\n" . implode("\n", $key_parts) . "\n-----END PUBLIC KEY-----\n";
+	}
+
+	protected function base_url_user($path) {
+		return $this->realm_url . $path;
+	}
+
+	protected function base_url_admin($path) {
+		return $this->realm_admin_url . $path;
 	}
 
 	/**
@@ -117,13 +126,14 @@ class KeyCloak {
 			array_push($headers, 'Authorization: Basic ' . base64_encode($this->client_id . ':' . $this->secret));
 		}
 
-		$response = $this->send_request('POST', '/protocol/openid-connect/token', $headers, http_build_query($payload));
+		$response = $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/token'), $headers, http_build_query($payload));
 
-		if ($response['code'] < 200 || $response['code'] > 299) {
+		if (!array_key_exists('code_error', json_decode($responsee, true))) {
+			$this->grant = new Grant($response);
+			return $response;
+		} else {
+			$this->grant = null;
 			return false;
-    		} else {
-			$this->grant = new Grant($response['body']);
-			return $response['body'];
 		}
 	}
 
@@ -171,13 +181,14 @@ class KeyCloak {
 			array_push($headers, 'Authorization: Basic ' . base64_encode($this->client_id . ':' . $this->secret));
 		}
 
-		$response = $this->send_request('POST', '/protocol/openid-connect/token', $headers, http_build_query($payload));
+		$response = $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/token'), $headers, http_build_query($payload));
 
-		if ($response['code'] < 200 || $response['code'] > 299) {
-			return null;
+		if (!array_key_exists('code_error', json_decode($responsee, true))) {
+			$this->grant = new Grant($response);
+			return $response;
 		} else {
-			$this->grant = new Grant($response['body']);
-			return $response['body'];
+			$this->grant = null;
+			return false;
 		}
 	}
 
@@ -273,14 +284,14 @@ class KeyCloak {
 			array_push($headers, 'Authorization: Basic ' . base64_encode($this->client_id . ':' . $this->secret));
 		}
 
-		$response = $this->send_request('POST', '/protocol/openid-connect/token', $headers, http_build_query($payload));
+		$response = $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/token'), $headers, http_build_query($payload));
 
-		if ($response['code'] < 200 || $response['code'] > 299) {
+		if (!array_key_exists('code_error', json_decode($responsee, true))) {
+			$this->grant = new Grant($response);
+			return $response;
+		} else {
 			$this->grant = null;
 			return false;
-		} else {
-			$this->grant = new Grant($response['body']);
-			return $response['body'];
 		}
 	}
 
@@ -311,9 +322,7 @@ class KeyCloak {
 				'Accept: application/json'
 		);
 
-		$response = $this->send_request('GET', '/protocol/openid-connect/userinfo', $headers);
-
-		return $response['body'];
+		return $this->send_request('GET', $this->base_url_user('/protocol/openid-connect/userinfo'), $headers);
 	}
 
 	/**
@@ -344,13 +353,8 @@ class KeyCloak {
 			'Content-Type: application/x-www-form-urlencoded'
 		);
 
-		$response = $this->send_request('POST', '/protocol/openid-connect/token/introspect', $headers, $payload);
+		return $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/token/introspect'), $headers, $payload);
 
-		if ($response['code'] == 200) {
-			return $response['body'];
-		}
-
-		return null;
 	}
 
 	public function get_token_by_refresh_token ($refresh_token = '') {
@@ -372,23 +376,21 @@ class KeyCloak {
 			'Content-Type: application/x-www-form-urlencoded'
 		);
 
-		$response = $this->send_request('POST', '/protocol/openid-connect/token', $headers, $payload);
-
-		if ($response['code'] == 200) {
-			return $response['body'];
-		}
-
-		return null;
+		return $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/token'), $headers, $payload);
 
 	}
 
-	public function logout() {
+	public function logout($refresh_token = '') {
+
+		if ($refresh_token == '') {
+			$refresh_token = $this->grant->refresh_token->to_string();
+		}
 
 		$payload = array(
 			'client_id' => $this->config['resource'],
 			'client_secret' => $this->config['credentials']['secret'],
 			'grant_type' => 'refresh_token',
-			'refresh_token' => $this->grant->refresh_token->to_string()
+			'refresh_token' => $refresh_token
 		);
 
 		$payload = http_build_query($payload);
@@ -397,9 +399,118 @@ class KeyCloak {
 			'Content-Type: application/x-www-form-urlencoded'
 		);
 
-		$response = $this->send_request('POST', '/protocol/openid-connect/logout', $headers, $payload);
+	  return  $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/logout'), $headers, $payload);
 
-		return ($response['code'] == 204) ? true : false;
+	}
+
+	/**
+	 * Administrator users
+	 * 
+	 */
+
+	public function create_user($user_representation, $access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json",
+			"Content-Type:application/json"
+		);
+		
+		return $this->send_request('POST', $this->base_url_admin('/users'), $headers, json_encode($user_representation));
+	}
+
+	public function update_user($id, $user_representation, $access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json",
+			"Content-Type:application/json"
+		);
+
+		return $this->send_request('PUT', $this->base_url_admin("/users/{$id}"), $headers, json_encode($user_representation));
+	}
+
+
+	public function delete_user($id, $access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json",
+			"Content-Type:application/json"
+		);
+
+		return $this->send_request('DELETE', $this->base_url_admin("/users/{$id}"), $headers);
+	}
+
+	public function get_users($access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json"
+		);
+	
+		return $this->send_request('GET', $this->base_url_admin('/users'), $headers);
+	}
+
+
+	public function count_users($access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json"
+		);
+	
+		return $this->send_request('GET', $this->base_url_admin('/users/count/'), $headers);
+	}
+
+	public function get_user($id, $access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json"
+		);
+	
+		return $this->send_request('GET', $this->base_url_admin("/users/{$id}"), $headers);
+	}
+
+	public function get_groups($access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json"
+		);
+	
+		return $this->send_request('GET', $this->base_url_admin('/groups'), $headers);
+	}
+
+	public function get_clients($access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json"
+		);
+	
+		return $this->send_request('GET', $this->base_url_admin('/clients'), $headers);
+	}
+
+	public function get_role_mappings($id, $access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json"
+		);
+	
+		return $this->send_request('GET', $this->base_url_admin("/users/{$id}/role-mappings"), $headers);
+	}
+
+	public function get_all_roles_client($id, $access_token) {
+
+		$headers = array(
+			"Authorization: Bearer {$access_token}",
+			"Accept: application/json"
+		);
+	
+		return $this->send_request('GET', $this->base_url_admin("/clients/{$id}/roles"), $headers);
 	}
 
 	/**
@@ -428,36 +539,39 @@ class KeyCloak {
 	*
 	* @return {Array} An associative array with 'code' for response code and 'body' for request body
 	*/
-	protected function send_request ($method = 'GET', $path = '/', $headers = array(), $data = '') {
+	protected function send_request ($method = 'GET', $url = '', $headers = array(), $data = '') {
+		
 		$method = strtoupper($method);
-		$url = $this->realm_url . $path;
 
 		// Initiate HTTP request
 		$request = curl_init();
 
-		if ($method === 'GET') {
-			curl_setopt($request, CURLOPT_URL, $url.'?'.$data);
-		}
-
-		if ($method === 'POST') {
-			curl_setopt($request, CURLOPT_URL, $url);
-			curl_setopt($request, CURLOPT_POST, TRUE);
+		if ($method === 'POST' || $method === 'PUT') {
+			curl_setopt($request, CURLOPT_POST, true);
 			curl_setopt($request, CURLOPT_POSTFIELDS, $data);
 			array_push($headers, 'Content-Length: ' . strlen($data));
 		}
 
+		curl_setopt($request, CURLOPT_URL, $url);
+		curl_setopt($request, CURLOPT_CUSTOMREQUEST, $method);
 		curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($request, CURLOPT_FOLLOWLOCATION, true);
 		curl_setopt($request, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($request, CURLOPT_HTTPHEADER, $headers);
+		curl_setopt($request, CURLOPT_TIMEOUT, 30); 
 
 		$response = curl_exec($request);
 		$response_code = curl_getinfo($request, CURLINFO_HTTP_CODE);
 		curl_close($request);
 
-		return array(
-			'code' => $response_code,
-			'body' => $response
-		);
+		if ($response_code < 200 || $response_code > 299) {
+			return json_encode(
+				array_merge(array('code_error' => $response_code),
+										json_decode($response, true))
+			);
+		}
+
+		return $response;
 	}
 
 	/**
@@ -514,4 +628,6 @@ class KeyCloak {
 		json_decode($string);
 		return (json_last_error() == JSON_ERROR_NONE);
 	}
+
+
 }
