@@ -128,7 +128,7 @@ class KeyCloak {
 
 		$response = $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/token'), $headers, http_build_query($payload));
 
-		if (!array_key_exists('code_error', json_decode($responsee, true))) {
+		if (!array_key_exists('code_error', json_decode($response, true))) {
 			$this->grant = new Grant($response);
 			return $response;
 		} else {
@@ -183,7 +183,7 @@ class KeyCloak {
 
 		$response = $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/token'), $headers, http_build_query($payload));
 
-		if (!array_key_exists('code_error', json_decode($responsee, true))) {
+		if (!array_key_exists('code_error', json_decode($response, true))) {
 			$this->grant = new Grant($response);
 			return $response;
 		} else {
@@ -286,7 +286,7 @@ class KeyCloak {
 
 		$response = $this->send_request('POST', $this->base_url_user('/protocol/openid-connect/token'), $headers, http_build_query($payload));
 
-		if (!array_key_exists('code_error', json_decode($responsee, true))) {
+		if (!array_key_exists('code_error', json_decode($response, true))) {
 			$this->grant = new Grant($response);
 			return $response;
 		} else {
