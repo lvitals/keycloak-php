@@ -1,0 +1,21 @@
+{
+    "name": "lvitals/keycloak-php",
+    "description": "Authentication library for interacting with a Keycloak server.",
+    "keywords": ["keycloak", "authentication", "oauth"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Leandro Vital",
+            "email": "leavitals@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "autoload": {
+        "psr-4": {
+            "Lvitals\\KeyCloak\\": "src/KeyCloak"
+        }
+    },
+    "require": {
+        "php": ">5.3.0"
+    }
+}
